@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			html {
+				width: 400px;
+			}
+		</style>
+	</head>
+	<body>
+		<main id="app">
+			<h1>EQD Clipper</h1>
+			<button @click="start">Scrape Page</button>
+			<button @click="download">Download Images</button>
+			
+			<div>Total Sources: {{ totalSources }}</div>
+			<div>Total Images: {{ totalImages }}</div>
+
+			<ul>
+				<li v-for="source in sources">
+					{{ source.number }} - {{ source.name }} - ({{ source.images.length }})
+	
+					<ul>
+						<li v-for="image in source.images">{{ image }}</li>
+					</ul>
+				</li>
+			</ul>
+		</main>
+
+
+		<script src="vendor/vue.js"></script>
+		<script src="popup.js"></script>
+	</body>
+</html>

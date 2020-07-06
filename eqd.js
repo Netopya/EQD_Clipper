@@ -2,6 +2,12 @@ console.log('On Screen!');
 
 const port = chrome.runtime.connect({name: "eqdPort"});
 
+port.onMessage.addListener(msg => {
+	if (msg.msg === 'Scrape') {
+		scrapePage();
+	}
+});
+
 function scrapePage() {
 	const post = document.querySelector('#Blog1 [itemprop="description articleBody"]')
 
@@ -103,20 +109,6 @@ function buildSources(items, stack, results) {
 		buildSources(items, stack, results);
 		return;
 	}
-
-	// if (item.name === 'image' && !stack.length) {
-	// 	results.push({
-	// 		item: 'Single Image',
-	// 		url: item.url
-	// 	});
-	// 	buildSources(items, stack, results);
-	// }
-
-	// if (item.name === 'image' && stack)
-
-	// if (item.name === 'link') {
-
-	// }
 }
 
 function buildSource(stack, results) {

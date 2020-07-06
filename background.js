@@ -12,6 +12,10 @@ chrome.runtime.onInstalled.addListener(function() {
 	});
 });
 
+let popupPort = null;
+let eqdPort = null;
+let state = null;
+
 chrome.runtime.onConnect.addListener(function(port) {
 	console.log('Port connected', port.name);
 
@@ -21,14 +25,22 @@ chrome.runtime.onConnect.addListener(function(port) {
 		registerDaPort(port);
 	} else if (port.name == 'derpiPort') {
 		registerDerpiPort(port);
+	} else if (port.name == 'popupPort') {
+		registerPopupPort(port);
 	}
 });
 
 function registerEqdPort(port) {
+	eqdPort = port;
+	port.onDisconnect.addListener(() => {
+		console.log('eqdPort disconnected');
+		eqdPort = null;
+	});
 	port.onMessage.addListener(msg => {
 		if (msg.msg == 'DownloadThis') {
 			console.log('Received Download Request', msg.data);
-			processDownload(msg.data);
+			state = msg.data;
+			updatePopup(msg.data);
 		}
 	});
 }
@@ -47,6 +59,31 @@ function registerDerpiPort(port) {
 			processDerpiDownload(msg.data);
 		}
 	})
+}
+
+function registerPopupPort(port) {
+	popupPort = port;
+	port.onDisconnect.addListener(() => {
+		console.log('Popup disconnected');
+		popupPort = null;
+	});
+	port.onMessage.addListener(msg => {
+		if (msg.msg === 'Scrape' && eqdPort) {
+			eqdPort.postMessage({msg: 'Scrape'});
+		} else if (msg.msg === 'Download' && state) {
+			processDownload(state);
+		}
+	});
+
+	if (state) {
+		updatePopup(state);
+	}
+}
+
+function updatePopup(data) {
+	if (popupPort) {
+		popupPort.postMessage({msg: 'updateState', data: data });
+	}
 }
 
 async function processDownload(data) {
