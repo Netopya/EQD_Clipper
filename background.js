@@ -14,7 +14,10 @@ chrome.runtime.onInstalled.addListener(function() {
 
 let popupPort = null;
 let eqdPort = null;
-let state = null;
+let state = {
+	requests: [],
+	scrapeName: ''
+};
 
 chrome.runtime.onConnect.addListener(function(port) {
 	console.log('Port connected', port.name);
@@ -37,10 +40,11 @@ function registerEqdPort(port) {
 		eqdPort = null;
 	});
 	port.onMessage.addListener(msg => {
+		console.log(arguments);
 		if (msg.msg == 'DownloadThis') {
 			console.log('Received Download Request', msg.data);
-			state = msg.data;
-			updatePopup(msg.data);
+			state.requests = msg.data;
+			updatePopup(state);
 		}
 	});
 }
@@ -68,10 +72,22 @@ function registerPopupPort(port) {
 		popupPort = null;
 	});
 	port.onMessage.addListener(msg => {
-		if (msg.msg === 'Scrape' && eqdPort) {
-			eqdPort.postMessage({msg: 'Scrape'});
-		} else if (msg.msg === 'Download' && state) {
+		if (msg.msg === 'Scrape') {
+			//eqdPort.postMessage({msg: 'Scrape'});
+
+			chrome.tabs.query({
+				active: true,
+				currentWindow: true,
+				//url: 'https://*.equestriadaily.com/*'
+			}, function(tabs) {
+				console.log('Found tabs', tabs);
+				chrome.tabs.sendMessage(tabs[0].id, {msg: 'Scrape'});
+			});
+		} else if (msg.msg === 'Download' && state.requests) {
 			processDownload(state);
+		} else if (msg.msg === 'NameScrape') {
+			state.scrapeName = msg.name;
+			console.log('Updating scrape name', state);
 		}
 	});
 
@@ -89,9 +105,11 @@ function updatePopup(data) {
 async function processDownload(data) {
 //	downloadURL(data[0].images[1]);
 
+	console.log('processing download', data);
+
 	const results = [];
 	let sourceResults = [];
-	for (const source of data) {
+	for (const source of data.requests) {
 		sourceResults = [];
 		for (const image of source.images) {
 			let result = await downloadURL(image);
@@ -223,7 +241,7 @@ function downloadImage(url, resolve, defaultFilename) {
 	console.log('Regular download', url);
 	let filename = defaultFilename || urlToImageName(url);
 
-	chrome.downloads.download({ url: url, filename: "eqdc/" + "8" + "/" + filename, saveAs: false }, function(downloadId) {
+	chrome.downloads.download({ url: url, filename: "eqdc/" + (state.scrapeName || "8") + "/" + filename, saveAs: false }, function(downloadId) {
 		currentDownload = {
 			id: downloadId,
 			resolve

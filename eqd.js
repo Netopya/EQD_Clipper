@@ -2,7 +2,7 @@ console.log('On Screen!');
 
 const port = chrome.runtime.connect({name: "eqdPort"});
 
-port.onMessage.addListener(msg => {
+chrome.runtime.onMessage.addListener(msg => {
 	if (msg.msg === 'Scrape') {
 		scrapePage();
 	}

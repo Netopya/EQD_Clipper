@@ -1,5 +1,8 @@
 const port = chrome.runtime.connect({name: "popupPort"});
-const state = {data: null};
+const state = {data: {
+	requests: [],
+	scrapeName: ''
+}};
 
 
 port.onMessage.addListener(function(msg) {
@@ -7,18 +10,21 @@ port.onMessage.addListener(function(msg) {
 
 	if (msg.msg === 'updateState') {
 		state.data = msg.data;
-		console.log('new state data', state.data);
+		console.log('new state data', state);
 	}
 });
 
 const app = new Vue({
 	el: '#app',
 	data: {
-		state
+		sharedState: state
 	},
 	computed: {
+		state() {
+			return this.sharedState.data
+		},
 		sources() {
-			return state.data || [];
+			return this.state.requests || [];
 		},
 		totalSources() {
 			return this.sources.length;
@@ -32,7 +38,12 @@ const app = new Vue({
 			port.postMessage({msg: 'Scrape'});
 		},
 		download() {
-			port.postMessage({msg: 'Download'});
+			port.postMessage({msg: 'Download' });
+		}
+	},
+	watch: {
+		'state.scrapeName': (value) => {
+			port.postMessage({msg: 'NameScrape', name: value });
 		}
 	}
 });

@@ -13,6 +13,11 @@
 			<button @click="start">Scrape Page</button>
 			<button @click="download">Download Images</button>
 			
+			<label>
+				Folder Name:
+				<input type="text" v-model="state.scrapeName"/>
+			</label>
+
 			<div>Total Sources: {{ totalSources }}</div>
 			<div>Total Images: {{ totalImages }}</div>
 

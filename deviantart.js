@@ -13,8 +13,10 @@ const port = chrome.runtime.connect({name: "daPort"});
 // }
 
 
+
 let downloadSearch = setInterval(lookForkDownload, 100);
 let checkedCount = 0;
+let startLoadAt = new Date();
 
 function lookForkDownload() {
 	const downloadButton = document.querySelector('[download]');
@@ -26,7 +28,7 @@ function lookForkDownload() {
 	} else if (checkedCount < 30) {
 		checkedCount += 1;
 		console.log('No download found', checkedCount);
-	} else {
+	} else if (checkedCount >= 30 || new Date() - startLoadAt > 5000) {
 		console.log('Using image')
 		clearInterval(downloadSearch);
 		downloadFromImage();
