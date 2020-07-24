@@ -41,7 +41,12 @@ function downloadFromButton(node) {
 
 function downloadFromImage() {
 	let image = document.querySelector('[data-hook="art_stage"] img');
-	downloadImage(image.src, 'Preview Image');
+
+	if (image) {
+		downloadImage(image.src, 'Preview Image');
+	} else {
+		port.postMessage({msg: 'Error'});
+	}
 }
 
 function downloadImage(url, msg) {

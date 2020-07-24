@@ -53,6 +53,11 @@ function registerDaPort(port) {
 	port.onMessage.addListener(msg => {
 		if (msg.msg == 'DownloadThis') {
 			processDaDownload(msg.data);
+		} else if (msg.msg == 'Error' && currentDaParse) {
+			currentDaParse.resolve({
+				success: false,
+				msg: 'Could not find DA image'
+			});
 		}
 	})
 }
