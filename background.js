@@ -33,6 +33,42 @@ chrome.runtime.onConnect.addListener(function(port) {
 	}
 });
 
+function parseRanges(requests) {
+	const sources = requests
+		.map(source => parseInt(source.number))
+		.reduce((acc, cur) => {
+			if (!isNaN(cur)) {
+				acc.push(cur);
+			}
+			return acc;
+		}, [])
+		.sort((a,b)=>a-b);
+
+
+	const duplicates = new Set();
+	const missing = [];
+
+
+	let last = sources[0];
+	for (i = 1; i < sources.length; i++) {
+		if (last === sources[i]) {
+			duplicates.add(sources[i]);
+		} else if (last + 2 === sources[i]) {
+			missing.push([sources[i]]);
+		} else if (sources[i] - last > 2) {
+			missing.push([last + 1, sources[i] - 1]);
+		}
+
+		last = sources[i];
+	}
+
+	return {
+		unknown: requests.length - sources.length,
+		duplicates: Array.from(duplicates),
+		missing
+	};
+}
+
 function registerEqdPort(port) {
 	eqdPort = port;
 	port.onDisconnect.addListener(() => {
@@ -44,14 +80,15 @@ function registerEqdPort(port) {
 		if (msg.msg == 'DownloadThis') {
 			console.log('Received Download Request', msg.data);
 			state.requests = msg.data;
+			state.ranges = parseRanges(state.requests);
 			updatePopup(state);
 		}
 	});
 }
 
 function registerDaPort(port) {
-	port.onMessage.addListener(msg => {
-		if (msg.msg == 'DownloadThis') {
+	port.onMessage.addListener((msg, sender) => {
+		if (msg.msg == 'DownloadThis' && currentDaParse && currentDaParse.tabId === sender.sender.tab.id) {
 			processDaDownload(msg.data);
 		} else if (msg.msg == 'Error' && currentDaParse) {
 			currentDaParse.resolve({

@@ -21,7 +21,7 @@ const app = new Vue({
 	},
 	computed: {
 		state() {
-			return this.sharedState.data
+			return this.sharedState.data;
 		},
 		sources() {
 			return this.state.requests || [];
@@ -31,6 +31,28 @@ const app = new Vue({
 		},
 		totalImages() {
 			return this.sources.reduce((acc, cur) => acc + cur.images.length, 0);
+		},
+		ranges() {
+			return this.state.ranges;
+		},
+		duplicates() {
+			if (!this.ranges?.duplicates.length) {
+				return 'None';
+			}
+
+			return this.ranges.duplicates.join(', ');
+		},
+		unknowns() {
+			return this.ranges?.unknown.length || 'None';
+		},
+		missing() {
+			if (!this.ranges?.missing.length) {
+				return 'None';
+			}
+
+			return this.ranges.missing
+				.map(range => range.join(' to '))
+				.join(', ');
 		}
 	},
 	methods: {

@@ -18,8 +18,15 @@
 				<input type="text" v-model="state.scrapeName"/>
 			</label>
 
+			<h2>Report</h2>
 			<div>Total Sources: {{ totalSources }}</div>
 			<div>Total Images: {{ totalImages }}</div>
+			<div>Duplicates: {{ duplicates }}</div>
+			<div>Unknown: {{ unknowns }}</div>
+			<div>Missing: {{ missing }}</div>
+
+
+			<h2>Images</h2>
 
 			<ul>
 				<li v-for="source in sources">
