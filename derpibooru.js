@@ -15,6 +15,11 @@ function lookForkDownload() {
 	} else if (checkedCount < 30) {
 		checkedCount += 1;
 		console.log('No download found', checkedCount);
+	} else if (checkedCount === 30 && document.querySelector('.block.block--fixed.block--warning h1').innerText === 'This image has been deleted') {
+		port.postMessage({msg: 'Error', data: {
+			error: 'This image has been deleted'
+		}});
+		checkedCount += 1;
 	} else {
 		console.error('Could not find download button!');
 	}

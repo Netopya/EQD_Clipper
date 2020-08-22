@@ -54,7 +54,7 @@ function parseRanges(requests) {
 		if (last === sources[i]) {
 			duplicates.add(sources[i]);
 		} else if (last + 2 === sources[i]) {
-			missing.push([sources[i]]);
+			missing.push([sources[i] - 1]);
 		} else if (sources[i] - last > 2) {
 			missing.push([last + 1, sources[i] - 1]);
 		}
@@ -103,6 +103,11 @@ function registerDerpiPort(port) {
 	port.onMessage.addListener(msg => {
 		if (msg.msg == 'DownloadThis') {
 			processDerpiDownload(msg.data);
+		} else if (msg.msg == 'Error' && currentDerpiParse) {
+			currentDerpiParse.resolve({
+				success: false,
+				msg: msg.data.error
+			});
 		}
 	})
 }
@@ -207,7 +212,7 @@ function downloadDeviantArt(url, resolve) {
 
 	chrome.tabs.create({
 		url: url,
-		active: false
+		//active: false
 	}, tab => {
 		console.log('Opened tab', tab.id);
 		currentDaParse = {
