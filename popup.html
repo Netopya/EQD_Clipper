@@ -5,18 +5,47 @@
 			html {
 				width: 400px;
 			}
+
+			body {
+				font-size: 0.875rem;
+			}
+
+			main {
+				padding: 1em;
+			}
+
+			h1 {
+				text-align: center;
+			}
+
+			.site-action-menu {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				column-gap: 1em;
+				padding-left: 1em;
+				padding-right: 1em;
+			}
 		</style>
+
+		<link rel="stylesheet" href="vendor/bootstrap.min.css"/>
 	</head>
 	<body>
 		<main id="app">
 			<h1>EQD Clipper</h1>
-			<button @click="start">Scrape Page</button>
-			<button @click="download">Download Images</button>
+			<form class="text-center">
+				<div class="form-group site-action-menu">
+					<button class="btn btn-primary" @click="start">Scrape Page</button>
+					<button class="btn btn-success" @click="download">Download Images</button>
+				</div>
+
+				<div>
+					<label class="form-group">
+						Folder Name:
+						<input class="form-control" type="text" v-model="state.scrapeName"/>
+					</label>
+				</div>
+			</form>
 			
-			<label>
-				Folder Name:
-				<input type="text" v-model="state.scrapeName"/>
-			</label>
 
 			<h2>Report</h2>
 			<div>Total Sources: {{ totalSources }}</div>
