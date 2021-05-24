@@ -113,6 +113,12 @@ function buildSources(items, stack, results) {
 
 function buildSource(stack, results) {
 	let source = stack.find(x => x.name === 'source');
+
+	if (!source) {
+		alert('Detected orphaned image!');
+		source = {};
+	}
+
 	let images = stack.filter(x => x.name === 'image' || x.name === 'link');
 	results.push({
 		source,
@@ -143,6 +149,7 @@ function annotateResult(result) {
 	}
 	let isDeviantArt = /deviantart\.com/.exec(result.source.url);
 	let isDerpi = /derpibooru\.org/.exec(result.source.url);
+	let isTwit = /twitter\.com/.exec(result.source.url);
 	
 	if (isDeviantArt) {
 		output.images.push(result.source.url);
@@ -158,6 +165,14 @@ function annotateResult(result) {
 
 		if (result.images.length > 1) {
 			output.name = 'Derpibooru with additional images'
+			output.images = output.images.concat(result.images.map(x => x.url));
+		}
+	} else if (isTwit) {
+		output.images.push(result.source.url);
+		output.name = 'Twitter';
+
+		if (result.images.length > 1) {
+			output.name = 'Twitter with additional images'
 			output.images = output.images.concat(result.images.map(x => x.url));
 		}
 	} else {

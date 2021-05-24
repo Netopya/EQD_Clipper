@@ -30,6 +30,8 @@ chrome.runtime.onConnect.addListener(function(port) {
 		registerDerpiPort(port);
 	} else if (port.name == 'popupPort') {
 		registerPopupPort(port);
+	} else if (port.name == 'twitPort') {
+		registerTwitPort(port);
 	}
 });
 
@@ -112,6 +114,20 @@ function registerDerpiPort(port) {
 	})
 }
 
+function registerTwitPort(port) {
+	port.onMessage.addListener((msg, sender) => {
+		if (msg.msg == 'DownloadThis' && currentTwitParse && currentTwitParse.tabId === sender.sender.tab.id) {
+			processTwitDownload(msg.data);
+		} else if (msg.msg == 'Error' && currentTwitParse) {
+			currentTwitParse.resolve({
+				success: false,
+				msg: 'Could not find Twit image'
+			});
+		}
+	})
+}
+
+
 function registerPopupPort(port) {
 	popupPort = port;
 	port.onDisconnect.addListener(() => {
@@ -193,6 +209,8 @@ async function downloadURL(url) {
 			downloadDeviantArt(url, resolve);
 		} else if (url.indexOf('derpibooru.org') > 0 ) {
 			downloadDerpibooru(url, resolve);
+		} else if (url.indexOf('twitter.com') > 0) {
+			downloadTwitter(url, resolve);
 		} else {
 			downloadImage(url, resolve);
 		}
@@ -267,6 +285,35 @@ function processDerpiDownload(data) {
 		}
 	}
 	downloadImage(data.url, callback);
+}
+
+let currentTwitParse = null;
+
+function downloadTwitter(url, resolve) {
+	console.log('Twitter download', url);
+
+	chrome.tabs.create({
+		url: url,
+	}, tab => {
+		console.log('Opened tab', tab.id);
+		currentTwitParse = {
+			tabId: tab.id,
+			resolve
+		};
+	});
+}
+
+function processTwitDownload(data) {
+	callback = function(result) {
+		if (currentTwitParse) {
+			result.msg = data.msg;
+			console.log('Closing tab', currentTwitParse.tabId);
+			chrome.tabs.remove(currentTwitParse.tabId, () => {
+				currentTwitParse.resolve(result);
+			});
+		}
+	}
+	downloadImage(data.url, callback, data.filename);
 }
 
 let currentDownload = null;
