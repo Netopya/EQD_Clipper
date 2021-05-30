@@ -12,6 +12,7 @@ function scrapePage() {
 	const post = document.querySelector('#Blog1 [itemprop="description articleBody"]')
 
 	if (post) {
+		post.style.outline = '1px solid blue';
 		console.log('Found post', post);
 	} else {
 		console.error('Could not find post');
@@ -43,6 +44,7 @@ function parseNode(node, ioiList) {
 		let testImageLink = /((\.jpg)|(\.png)|(\.jpeg)|(\.gif)|(\.webp))/i.exec(node.href);
 
 		if (testSource) {
+			node.style.outline = '2px solid purple';
 			ioiList.push({
 				name: 'source',
 				content: node.innerText,
@@ -52,6 +54,7 @@ function parseNode(node, ioiList) {
 				node: node
 			});
 		} else if (testImageLink) {
+			node.style.outline = '2px solid green';
 			ioiList.push({
 				name: 'link',
 				content: node.innerText,
@@ -63,6 +66,7 @@ function parseNode(node, ioiList) {
 	}
 
 	if (node.nodeName === 'IMG') {
+		node.style.outline = '2px solid yellow';
 		ioiList.push({
 			name: 'image',
 			url: node.src,

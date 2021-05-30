@@ -7,9 +7,22 @@ let startLoadAt = new Date();
 let imageSearch;
 
 function lookForPort() {
-	const post = document.querySelector('article[tabindex="0"] a[href*="/photo/"]');
+	const article = document.querySelector('article[tabindex="0"]');
 
-	if (post) {
+	if (!article) {
+		return;
+	}
+
+	article.style.outline = '5px solid yellow';
+
+	const post = article.querySelector('a[href*="/photo/"]');
+	const view = article.querySelector('div[role="button"] > div[dir="auto"]')
+
+	if (view) {
+		view.style.outline = '5px solid yellow';
+		view.click();
+	} else if (post) {
+		post.style.outline = '5px solid yellow';
 		console.log('Post button', post);
 		clearInterval(postSearch);
 		checkedCount = 0;
@@ -27,6 +40,7 @@ function lookForImage() {
 	debugger;
 
 	if (image) {
+		image.style.outline = '5px solid yellow';
 		console.log('image', image);
 		clearInterval(imageSearch);
 		downloadImage(image.src)

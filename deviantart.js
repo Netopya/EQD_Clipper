@@ -22,6 +22,7 @@ function lookForkDownload() {
 	const downloadButton = document.querySelector('[download]');
 
 	if (downloadButton) {
+		downloadButton.style.outline = '5px solid purple';
 		console.log('Download button', downloadButton);
 		clearInterval(downloadSearch);
 		downloadFromButton(downloadButton);
@@ -43,6 +44,7 @@ function downloadFromImage() {
 	let image = document.querySelector('[data-hook="art_stage"] img');
 
 	if (image) {
+		image.style.outline = '5px solid purple';
 		downloadImage(image.src, 'Preview Image');
 	} else {
 		port.postMessage({msg: 'Error'});
