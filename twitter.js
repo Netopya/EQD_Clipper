@@ -1,7 +1,8 @@
 const port = chrome.runtime.connect({name: "twitPort"});
 
 let postSearch = setInterval(lookForPort, 100);
-let checkedCount = 0;
+let postCheckedCount = 0;
+let imageCheckedCount = 0;
 let startLoadAt = new Date();
 
 let imageSearch;
@@ -25,12 +26,16 @@ function lookForPort() {
 		post.style.outline = '5px solid yellow';
 		console.log('Post button', post);
 		clearInterval(postSearch);
-		checkedCount = 0;
+		postCheckedCount = 0;
 		post.click();
 		imageSearch = setInterval(lookForImage, 100)
-	} else if (checkedCount < 30) {
-		checkedCount += 1;
-		console.log('No post found', checkedCount);
+	} else if (postCheckedCount < 30) {
+		postCheckedCount += 1;
+		console.log('No post found', postCheckedCount);
+	} else {
+		clearInterval(postSearch);
+		console.log('Aborting post search');
+		port.postMessage({msg: 'Error'});
 	}
 }
 
@@ -44,9 +49,13 @@ function lookForImage() {
 		console.log('image', image);
 		clearInterval(imageSearch);
 		downloadImage(image.src)
-	} else if (checkedCount < 30) {
-		checkedCount += 1;
-		console.log('No image found', checkedCount);
+	} else if (imageCheckedCount < 30) {
+		imageCheckedCount += 1;
+		console.log('No image found', imageCheckedCount);
+	} else {
+		clearInterval(imageSearch);
+		console.log('Aborting image search');
+		port.postMessage({msg: 'Error'});
 	}
 }
 

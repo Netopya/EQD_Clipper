@@ -117,6 +117,7 @@ function registerDerpiPort(port) {
 function registerTwitPort(port) {
 	port.onMessage.addListener((msg, sender) => {
 		if (msg.msg == 'DownloadThis' && currentTwitParse && currentTwitParse.tabId === sender.sender.tab.id) {
+			console.log('Processing twit download');
 			processTwitDownload(msg.data);
 		} else if (msg.msg == 'Error' && currentTwitParse) {
 			currentTwitParse.resolve({
