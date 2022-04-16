@@ -329,6 +329,11 @@ chrome.downloads.onChanged.addListener(function(downloadDelta) {
 		currentDownload.resolve({
 			success: true
 		});
+	} else if (currentDownload !== null && downloadDelta.id == currentDownload.id && downloadDelta.error) {
+		console.warn('A download errored');
+		currentDownload.resolve({
+			success: false
+		});
 	}
 });
 

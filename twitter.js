@@ -8,11 +8,20 @@ let startLoadAt = new Date();
 let imageSearch;
 
 function lookForPort() {
-	const article = document.querySelector('article[tabindex="0"]');
+	const article = document.querySelector('article[role="article"]');
 
 	if (!article) {
+		if (postCheckedCount > 30) {
+			clearInterval(postSearch);
+			console.log('Aborting article search');
+			port.postMessage({msg: 'Error'});
+		}
+
+		postCheckedCount += 1;
 		return;
 	}
+
+	console.log('Using Article', article);
 
 	article.style.outline = '5px solid yellow';
 
@@ -21,6 +30,7 @@ function lookForPort() {
 
 	if (view) {
 		view.style.outline = '5px solid yellow';
+		console.log('Clicking on view', view);
 		view.click();
 	} else if (post) {
 		post.style.outline = '5px solid yellow';
@@ -42,7 +52,7 @@ function lookForPort() {
 
 function lookForImage() {
 	const image = document.querySelector('div[role="dialog"] img[src*="/media/"]');
-	debugger;
+	//debugger;
 
 	if (image) {
 		image.style.outline = '5px solid yellow';
@@ -60,7 +70,7 @@ function lookForImage() {
 }
 
 function downloadImage(url, msg) {
-	debugger;
+	//debugger;
 	let extension = urlToExtension(url);
 	let filename = urlToImageName(url);
 
