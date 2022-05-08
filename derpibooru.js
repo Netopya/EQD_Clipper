@@ -2,11 +2,12 @@ console.log('Sanic!');
 
 const port = chrome.runtime.connect({name: "derpiPort"});
 
-let downloadSearch = setInterval(lookForkDownload, 100);
+let downloadSearch = setInterval(lookForDownload, 100);
 let checkedCount = 0;
 
-function lookForkDownload() {
+function lookForDownload() {
 	const downloadButton = document.querySelector('[title="Download (no tags in filename)"]');
+	const errorBanner = document.querySelector('.block.block--fixed.block--warning h1');
 
 	if (downloadButton) {
 		console.log('Download button', downloadButton);
@@ -15,13 +16,17 @@ function lookForkDownload() {
 	} else if (checkedCount < 30) {
 		checkedCount += 1;
 		console.log('No download found', checkedCount);
-	} else if (checkedCount === 30 && document.querySelector('.block.block--fixed.block--warning h1').innerText === 'This image has been deleted') {
+	} else if (checkedCount === 30 && errorBanner && errorBanner.innerText === 'This image has been deleted') {
 		port.postMessage({msg: 'Error', data: {
 			error: 'This image has been deleted'
 		}});
-		checkedCount += 1;
+		clearInterval(downloadSearch);
 	} else {
 		console.error('Could not find download button!');
+		port.postMessage({msg: 'Error', data: {
+			error: 'Could not find download button'
+		}});
+		clearInterval(downloadSearch);
 	}
 }
 
