@@ -7,6 +7,8 @@ let startLoadAt = new Date();
 
 let imageSearch;
 
+let viewClicked = false;
+
 function lookForPort() {
 	const article = document.querySelector('article[role="article"]');
 
@@ -28,7 +30,8 @@ function lookForPort() {
 	const post = article.querySelector('a[href*="/photo/"]');
 	const view = article.querySelector('div[role="button"] > div[dir="auto"]')
 
-	if (view) {
+	if (view && !viewClicked) {
+		viewClicked = true;
 		view.style.outline = '5px solid yellow';
 		console.log('Clicking on view', view);
 		view.click();

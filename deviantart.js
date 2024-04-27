@@ -21,7 +21,7 @@ let startLoadAt = new Date();
 function lookForkDownload() {
 	const downloadButton = document.querySelector('[download]');
 
-	if (downloadButton) {
+	if (downloadButton && downloadButton.href) {
 		downloadButton.style.outline = '5px solid purple';
 		console.log('Download button', downloadButton);
 		clearInterval(downloadSearch);
@@ -32,7 +32,7 @@ function lookForkDownload() {
 	} else if (checkedCount >= 30 || new Date() - startLoadAt > 5000) {
 		console.log('Using image')
 		clearInterval(downloadSearch);
-		downloadFromImage();
+		clickOnImage();
 	}
 }
 
@@ -40,8 +40,20 @@ function downloadFromButton(node) {
 	downloadImage(node.href, 'Download Button');
 }
 
+function clickOnImage() {
+	let firstImage = document.querySelector('[fetchpriority="high"]');
+
+	if (firstImage) {
+		firstImage.click();
+		setTimeout(downloadFromImage, 3000 + Math.random() * 2000);
+	} else {
+		port.postMessage({msg: 'Error'});
+		return;
+	}
+}
+
 function downloadFromImage() {
-	let image = document.querySelector('[data-hook="art_stage"] img');
+	let image = document.querySelector('.ReactModalPortal img');
 
 	if (image) {
 		image.style.outline = '5px solid purple';
