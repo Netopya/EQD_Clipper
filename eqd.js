@@ -153,7 +153,7 @@ function annotateResult(result) {
 	}
 	let isDeviantArt = /deviantart\.com/.exec(result.source.url);
 	let isDerpi = /derpibooru\.org/.exec(result.source.url);
-	let isTwit = /twitter\.com/.exec(result.source.url);
+	let isTwit = /(twitter|x)\.com/.exec(result.source.url);
 	
 	if (isDeviantArt) {
 		output.images.push(result.source.url);

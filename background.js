@@ -210,7 +210,7 @@ async function downloadURL(url) {
 			downloadDeviantArt(url, resolve);
 		} else if (url.indexOf('derpibooru.org') > 0 ) {
 			downloadDerpibooru(url, resolve);
-		} else if (url.indexOf('twitter.com') > 0) {
+		} else if (url.indexOf('twitter.com') > 0 || url.indexOf('x.com') > 0) {
 			downloadTwitter(url, resolve);
 		} else {
 			downloadImage(url, resolve);
