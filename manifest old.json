@@ -2,13 +2,14 @@
 	"name": "EQD Clipper 5",
 	"version": "1.0",
 	"description": "Build an Extension!",
-	"manifest_version": 3,
+	"manifest_version": 2,
 	"background": {
-		"service_worker": "background.js"
+		"scripts": ["background.js"],
+		"persistent": false
 	},
-	"action": {
-    	"default_popup": "popup2.html"
-  	},
+	"page_action": {
+		"default_popup": "popup.html"
+	},
 	"content_scripts": [
 		{
 			"matches": ["https://*.equestriadaily.com/*"],
@@ -27,5 +28,6 @@
 			"js": ["twitter.js"]
 		}
 	],
-	"permissions": ["activeTab", "declarativeContent", "downloads", "tabs"]
+	"permissions": ["activeTab", "declarativeContent", "downloads", "tabs"],
+	"content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'"
 }

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        html {
+            width: 400px;
+        }
+
+        body {
+            font-size: 0.875rem;
+        }
+
+        main {
+            padding: 1em;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .site-action-menu {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            column-gap: 1em;
+            padding-left: 1em;
+            padding-right: 1em;
+        }
+    </style>
+
+    <link rel="stylesheet" href="vendor/bootstrap.min.css"/>
+</head>
+<body>
+    <main id="app">
+        <h1>EQD Clipper</h1>
+        <form class="text-center">
+            <div class="form-group site-action-menu">
+                <button class="btn btn-primary" id="startBtn">Scrape Page</button>
+                <button class="btn btn-success" id="downloadBtn">Download Images</button>
+            </div>
+
+            <div>
+                <label class="form-group">
+                    Folder Name:
+                    <input class="form-control" type="text" id="scrapeNameInput"/>
+                </label>
+            </div>
+        </form>
+
+        <h2>Report</h2>
+        <div id="totalSources">Total Sources: 0</div>
+        <div id="totalImages">Total Images: 0</div>
+        <div id="duplicates">Duplicates: None</div>
+        <div id="unknowns">Unknown: None</div>
+        <div id="missing">Missing: None</div>
+
+        <h2>Images</h2>
+
+        <ul id="sourcesList">
+            </ul>
+    </main>
+
+    <script src="popup2.js"></script>
+</body>
+</html>
