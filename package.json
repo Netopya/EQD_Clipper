@@ -1,0 +1,16 @@
+{
+  "name": "eqd-clipper",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/scrapers"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,green \"npm run dev -w @eqd/server\" \"npm run dev -w @eqd/web\"",
+    "build": "npm run build -w @eqd/scrapers && npm run build -w @eqd/server && npm run build -w @eqd/web",
+    "start": "npm run start -w @eqd/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

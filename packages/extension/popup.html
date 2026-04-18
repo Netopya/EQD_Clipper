@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>EQD Clipper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>EQD Clipper</h1>
+      <p class="hint">
+        Run the companion app, copy the API token from the dashboard, then
+        enable polling.
+      </p>
+      <label>
+        API base URL
+        <input type="url" id="apiBaseUrl" />
+      </label>
+      <label>
+        API token
+        <input type="password" id="apiToken" autocomplete="off" />
+      </label>
+      <label class="row">
+        <input type="checkbox" id="pollingEnabled" />
+        Poll for download jobs
+      </label>
+      <div class="actions">
+        <button type="button" id="saveBtn">Save</button>
+        <button type="button" id="pollNowBtn">Poll now</button>
+      </div>
+      <p id="status" class="status"></p>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
