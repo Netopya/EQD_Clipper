@@ -38,6 +38,20 @@ function openModalFallback() {
     port.postMessage({ msg: 'Error' });
     return;
   }
+  if (firstImage.computedStyleMap().get('cursor').value !== 'zoom-in') {
+    port.postMessage({
+      msg: 'DownloadThis',
+      data: {
+        url: firstImage.src,
+        filename:
+          urlToImageName(window.location.href) +
+          '.' +
+          urlToExtension(firstImage.src),
+        msg: 'Preview Image',
+      },
+    });
+    return;
+  }
   firstImage.click();
   setTimeout(() => {
     const image = document.querySelector('.ReactModalPortal img');
