@@ -20,6 +20,7 @@ const STATE_FILE = path.join(DATA_DIR, 'state.json');
  * @property {string} sourceName
  * @property {TaskStatus} status
  * @property {string} [error]
+ * @property {string} [claimedAt] ISO time when a worker took this task (for stale reclaim)
  */
 
 /**

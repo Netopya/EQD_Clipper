@@ -1,19 +1,82 @@
+/**
+ * Worker poll interval. Chrome repeating alarms are capped at ~1 minute, so we use
+ * short one-shot alarms and reschedule after each tick (see onAlarm).
+ * @type {number} seconds between polls when the queue is idle
+ */
+const POLL_INTERVAL_SEC = 5;
 const POLL_ALARM = 'eqd-clipper-poll';
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.alarms.create(POLL_ALARM, { periodInMinutes: 1 });
+const LOG = '[EQD Clipper]';
+
+/** Runs as soon as the service worker script is parsed (before any async work). */
+console.info(LOG, 'background script evaluated', new Date().toISOString());
+
+self.addEventListener('error', (event) => {
+  console.error(LOG, 'global error', event.message, event.filename, event.lineno);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error(LOG, 'unhandledrejection', event.reason);
+});
+
+function scheduleNextPollTick() {
+  const delayMin = Math.max(POLL_INTERVAL_SEC / 60, 1 / 60);
+  chrome.alarms.create(
+    POLL_ALARM,
+    { delayInMinutes: delayMin },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error(
+          LOG,
+          'chrome.alarms.create failed',
+          chrome.runtime.lastError.message,
+        );
+        return;
+      }
+      console.info(LOG, 'scheduled poll alarm in ~', POLL_INTERVAL_SEC, 's');
+    },
+  );
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  console.info(LOG, 'onInstalled', details.reason);
+  void (async () => {
+    const cfg = await getConfig();
+    if (cfg.pollingEnabled) scheduleNextPollTick();
+    else console.info(LOG, 'onInstalled: polling off, open popup and Save to enable');
+  })();
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === POLL_ALARM) {
-    void drainQueue();
-  }
+  if (alarm.name !== POLL_ALARM) return;
+  console.info(LOG, 'alarm fired', alarm.name);
+  void (async () => {
+    await drainQueue();
+    const cfg = await getConfig();
+    if (cfg.pollingEnabled) scheduleNextPollTick();
+    else console.info(LOG, 'alarm: polling disabled, not rescheduling');
+  })();
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === 'pollNow' || msg?.type === 'startPolling') {
-    void chrome.alarms.create(POLL_ALARM, { periodInMinutes: 1 });
+  console.info(LOG, 'onMessage', msg?.type ?? msg);
+  if (msg?.type === 'pollNow') {
     void drainQueue();
+    return;
+  }
+  if (msg?.type === 'pollingSettings') {
+    if (msg.enabled) {
+      scheduleNextPollTick();
+      void drainQueue();
+    } else {
+      chrome.alarms.clear(POLL_ALARM, () => {
+        if (chrome.runtime.lastError) {
+          console.warn(LOG, 'alarms.clear', chrome.runtime.lastError.message);
+        } else {
+          console.info(LOG, 'polling disabled; alarms cleared');
+        }
+      });
+    }
   }
 });
 
@@ -33,6 +96,7 @@ async function getConfig() {
 async function authFetch(path, options = {}) {
   const { apiBaseUrl, apiToken } = await getConfig();
   const url = `${apiBaseUrl}${path}`;
+  console.info(LOG, 'fetch', options.method || 'GET', url);
   const headers = {
     ...(options.headers || {}),
     Authorization: `Bearer ${apiToken}`,
@@ -41,8 +105,22 @@ async function authFetch(path, options = {}) {
 }
 
 async function drainQueue() {
+  console.info(LOG, 'drainQueue() start');
   const cfg = await getConfig();
-  if (!cfg.pollingEnabled || !cfg.apiToken) return;
+  if (!cfg.pollingEnabled) {
+    console.warn(
+      LOG,
+      'drainQueue skipped: polling is OFF — enable "Poll for download jobs" in the popup and Save',
+    );
+    return;
+  }
+  if (!cfg.apiToken) {
+    console.warn(
+      LOG,
+      'drainQueue skipped: no API token — paste token from dashboard and Save',
+    );
+    return;
+  }
 
   const maxTasks = 80;
   for (let i = 0; i < maxTasks; i++) {
@@ -51,12 +129,17 @@ async function drainQueue() {
 
     const res = await authFetch('/api/worker/poll', { method: 'POST' });
     if (!res.ok) {
-      console.warn('poll failed', res.status);
+      const hint = await res.text().catch(() => '');
+      console.warn(LOG, 'poll failed', res.status, hint);
       break;
     }
     const data = await res.json();
-    if (!data.task) break;
+    if (!data.task) {
+      console.info(LOG, 'poll: no task (queue empty or all busy)');
+      break;
+    }
 
+    console.info(LOG, 'running task', data.task.id, data.task.resolveKind, data.task.url);
     const outcome = await runTask(data.task);
     await authFetch('/api/worker/result', {
       method: 'POST',
@@ -67,7 +150,9 @@ async function drainQueue() {
         error: outcome.error,
       }),
     });
+    console.info(LOG, 'task finished', data.task.id, outcome.success, outcome.error || '');
   }
+  console.info(LOG, 'drainQueue() end');
 }
 
 /**
@@ -295,4 +380,18 @@ function downloadViaTab(kind, pageUrl, folderName) {
   });
 }
 
-void drainQueue();
+void (async () => {
+  try {
+    console.info(LOG, 'startup bootstrap');
+    const cfg = await getConfig();
+    console.info(LOG, 'config', {
+      apiBaseUrl: cfg.apiBaseUrl,
+      hasToken: !!cfg.apiToken,
+      pollingEnabled: cfg.pollingEnabled,
+    });
+    if (cfg.pollingEnabled) scheduleNextPollTick();
+    await drainQueue();
+  } catch (e) {
+    console.error(LOG, 'startup bootstrap failed', e);
+  }
+})();

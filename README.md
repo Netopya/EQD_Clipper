@@ -59,7 +59,7 @@ docker compose run --rm dev sh
    ```
 
    - API: [http://127.0.0.1:8787](http://127.0.0.1:8787)
-   - Dashboard (Vite): [http://127.0.0.1:5173](http://127.0.0.1:5173)
+   - Dashboard (Vite): [http://127.0.0.1:5173](http://127.0.0.1:5173) — job detail pages live at `/jobs/<job-id>` (client-side routing).
 
 2. On first API start, a token is created in `data/state.json`. Open the dashboard, copy the token from the **API token** panel (or from the file), click **Save token**, and use the **same** token in the Chrome extension popup.
 
@@ -69,6 +69,31 @@ docker compose run --rm dev sh
 4. In the extension popup, set **API base URL** (default `http://127.0.0.1:8787`), paste the **API token**, enable **Poll for download jobs**, and click **Save**.
 
 5. In the dashboard, queue an EQD post URL. The extension should pick up tasks and download in Chrome.
+
+### Extension polling
+
+- With **Poll for download jobs** enabled, the service worker asks the server for work about **every 5 seconds** (one-shot alarms; Chrome’s repeating alarms are limited to about once per minute, which is too slow for an empty queue).
+- **Poll now** triggers an immediate check without waiting for the next tick.
+- If a task was left **`in_progress`** because the worker crashed or the browser closed mid-download, the server **reclaims** it after **10 minutes** (or immediately if it has no claim timestamp). Reload the extension or hit **Poll now** after reclaim if needed.
+- If nothing runs, see **Service worker DevTools** below.
+
+### Service worker DevTools (why it can look “empty”)
+
+MV3 **service workers stop when idle**. The **Console** and **Network** panels only show what happens **while the worker is awake** and **while DevTools is open**.
+
+1. Go to `chrome://extensions`, enable **Developer mode**.
+2. Find **EQD Clipper** → click **Service worker** (or **Inspect views: service worker**).  
+   Do **not** use the popup’s Inspect — that is a different context.
+3. In DevTools, open the **Console** tab (try **Network** second; some builds are finicky for extension workers).
+4. With DevTools **still open**, open the extension **popup** and click **Poll now** (or toggle polling and **Save**).  
+   You should see lines starting with **`[EQD Clipper]`** (e.g. `background script evaluated`, `drainQueue() start`, `fetch … /api/worker/poll`).
+5. If the link says the service worker is **inactive**, click **Poll now** once — that wakes it — then click **Service worker** again to attach.
+
+Typical issues visible in the console:
+
+- **`drainQueue skipped: polling is OFF`** — turn on **Poll for download jobs** and **Save**.
+- **`drainQueue skipped: no API token`** — paste the token from the dashboard and **Save**.
+- **`poll failed 401`** — token mismatch; copy from `data/state.json` or dashboard and align extension + dashboard.
 
 Optional: copy [apps/web/.env.example](apps/web/.env.example) to `apps/web/.env` and adjust `VITE_API_URL` if the API listens elsewhere.
 

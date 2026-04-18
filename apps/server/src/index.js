@@ -61,10 +61,33 @@ async function waitForTwitterSlot() {
   }
 }
 
+const STALE_TASK_MS = 10 * 60 * 1000;
+
+function reclaimStaleTasks() {
+  const now = Date.now();
+  let changed = false;
+  for (const t of state.tasks) {
+    if (t.status !== 'in_progress') continue;
+    if (!t.claimedAt) {
+      t.status = 'pending';
+      changed = true;
+      continue;
+    }
+    const claimed = new Date(t.claimedAt).getTime();
+    if (Number.isNaN(claimed) || now - claimed > STALE_TASK_MS) {
+      t.status = 'pending';
+      delete t.claimedAt;
+      changed = true;
+    }
+  }
+  if (changed) persist();
+}
+
 /**
  * @returns {import('./store.js').Task | null}
  */
 async function pickNextTask() {
+  reclaimStaleTasks();
   const pending = state.tasks.filter((t) => t.status === 'pending');
   if (!pending.length) return null;
 
@@ -220,6 +243,7 @@ fastify.post('/api/worker/poll', async (req, reply) => {
     return { task: null };
   }
   task.status = 'in_progress';
+  task.claimedAt = new Date().toISOString();
   jobTouch(task.jobId);
   persist();
   return {
@@ -276,9 +300,11 @@ fastify.post('/api/worker/result', async (req, reply) => {
   if (body.success) {
     task.status = 'completed';
     task.error = undefined;
+    delete task.claimedAt;
   } else {
     task.status = 'failed';
     task.error = body.error || 'Unknown worker error';
+    delete task.claimedAt;
   }
   jobTouch(task.jobId);
   jobMaybeComplete(task.jobId);

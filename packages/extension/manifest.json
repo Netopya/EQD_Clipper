@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EQD Clipper",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Download worker for the EQD Clipper companion app (DeviantArt, Derpibooru, X/Twitter).",
   "permissions": ["alarms", "downloads", "storage", "tabs"],
   "host_permissions": [

@@ -28,7 +28,10 @@ saveBtn.addEventListener('click', async () => {
     pollingEnabled: pollingEnabled.checked,
   });
   setStatus('Saved.');
-  chrome.runtime.sendMessage({ type: 'startPolling' });
+  chrome.runtime.sendMessage({
+    type: 'pollingSettings',
+    enabled: pollingEnabled.checked,
+  });
 });
 
 pollNowBtn.addEventListener('click', () => {
