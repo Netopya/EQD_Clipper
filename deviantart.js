@@ -41,7 +41,7 @@ function downloadFromButton(node) {
 }
 
 function clickOnImage() {
-	let firstImage = document.querySelector('[fetchpriority="high"]');
+	let firstImage = document.querySelector('img[fetchpriority="high"]');
 
 	if (firstImage) {
 		firstImage.click();
