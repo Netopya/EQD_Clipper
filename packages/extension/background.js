@@ -247,102 +247,101 @@ function downloadToDisk(url, folderName, filename) {
   });
 }
 
-/** @type {null | { kind: string, tabId: number, resolve: () => void, reject: (e: Error) => void, folderName: string, timer: ReturnType<typeof setTimeout> }} */
-let resolverSlot = null;
+/**
+ * Track resolver jobs per tab so we always close the intended tab.
+ * @type {Map<number, { kind: 'da'|'derpi'|'twit', folderName: string, resolve: () => void, reject: (e: Error) => void, timer: ReturnType<typeof setTimeout> }>}
+ */
+const resolversByTabId = new Map();
+
+/** @type {Record<string, { kind: 'da'|'derpi'|'twit', defaultError: string }>} */
+const RESOLVER_PORTS = {
+  daPort: {
+    kind: 'da',
+    defaultError: 'Could not resolve DeviantArt image',
+  },
+  derpiPort: {
+    kind: 'derpi',
+    defaultError: 'Could not resolve Derpibooru image',
+  },
+  twitPort: {
+    kind: 'twit',
+    defaultError: 'Could not resolve Twitter/X image',
+  },
+};
 
 chrome.runtime.onConnect.addListener((port) => {
   const tabId = port.sender?.tab?.id;
-  if (port.name === 'daPort') registerDaPort(port, tabId);
-  else if (port.name === 'derpiPort') registerDerpiPort(port, tabId);
-  else if (port.name === 'twitPort') registerTwitPort(port, tabId);
+  const def = RESOLVER_PORTS[port.name];
+  if (!def) return;
+  registerResolverPort(port, tabId, def);
 });
 
-function finishResolver(ok, err) {
-  if (!resolverSlot) return;
-  clearTimeout(resolverSlot.timer);
-  const slot = resolverSlot;
-  resolverSlot = null;
-  chrome.tabs.remove(slot.tabId, () => {
+/**
+ * @param {number} tabId
+ * @param {boolean} ok
+ * @param {Error} [err]
+ */
+function finishResolver(tabId, ok, err) {
+  const slot = resolversByTabId.get(tabId);
+  if (!slot) return;
+  resolversByTabId.delete(tabId);
+  clearTimeout(slot.timer);
+  chrome.tabs.remove(tabId, () => {
     if (ok) slot.resolve();
     else slot.reject(err || new Error('Resolver failed'));
   });
 }
 
-function registerDaPort(port, tabId) {
+/**
+ * @param {chrome.runtime.Port} port
+ * @param {number | undefined} tabId
+ * @param {{ kind: 'da'|'derpi'|'twit', defaultError: string }} def
+ */
+function registerResolverPort(port, tabId, def) {
+  if (typeof tabId !== 'number') return;
+
   port.onMessage.addListener((msg) => {
-    if (
-      msg.msg === 'DownloadThis' &&
-      resolverSlot &&
-      resolverSlot.kind === 'da' &&
-      tabId === resolverSlot.tabId
-    ) {
-      const data = msg.data;
-      downloadToDisk(data.url, resolverSlot.folderName, data.filename)
-        .then(() => finishResolver(true))
-        .catch(() =>
-          finishResolver(false, new Error('DeviantArt download failed')),
-        );
-    } else if (
-      msg.msg === 'Error' &&
-      resolverSlot &&
-      resolverSlot.kind === 'da' &&
-      tabId === resolverSlot.tabId
-    ) {
-      finishResolver(false, new Error('Could not resolve DeviantArt image'));
+    const slot = resolversByTabId.get(tabId);
+    if (!slot) return;
+
+    // If something unexpected connected on this tab, ignore.
+    if (slot.kind !== def.kind) return;
+
+    if (msg?.msg === 'DownloadThis') {
+      const url = msg?.data?.url;
+      const filename = msg?.data?.filename;
+      if (typeof url !== 'string' || !url) {
+        finishResolver(tabId, false, new Error('Resolver returned no url'));
+        return;
+      }
+      if (typeof filename !== 'string' || !filename) {
+        finishResolver(tabId, false, new Error('Resolver returned no filename'));
+        return;
+      }
+      downloadToDisk(url, slot.folderName, filename)
+        .then(() => finishResolver(tabId, true))
+        .catch((e) => {
+          finishResolver(
+            tabId,
+            false,
+            e instanceof Error ? e : new Error(String(e)),
+          );
+        });
+      return;
+    }
+
+    if (msg?.msg === 'Error') {
+      const reason =
+        typeof msg?.data?.error === 'string' ? msg.data.error : def.defaultError;
+      finishResolver(tabId, false, new Error(reason));
     }
   });
-}
 
-function registerDerpiPort(port, tabId) {
-  port.onMessage.addListener((msg) => {
-    if (
-      msg.msg === 'DownloadThis' &&
-      resolverSlot &&
-      resolverSlot.kind === 'derpi' &&
-      tabId === resolverSlot.tabId
-    ) {
-      const data = msg.data;
-      downloadToDisk(data.url, resolverSlot.folderName)
-        .then(() => finishResolver(true))
-        .catch(() =>
-          finishResolver(false, new Error('Derpibooru download failed')),
-        );
-    } else if (
-      msg.msg === 'Error' &&
-      resolverSlot &&
-      resolverSlot.kind === 'derpi' &&
-      tabId === resolverSlot.tabId
-    ) {
-      finishResolver(
-        false,
-        new Error(msg.data?.error || 'Could not resolve Derpibooru image'),
-      );
-    }
-  });
-}
-
-function registerTwitPort(port, tabId) {
-  port.onMessage.addListener((msg) => {
-    if (
-      msg.msg === 'DownloadThis' &&
-      resolverSlot &&
-      resolverSlot.kind === 'twit' &&
-      tabId === resolverSlot.tabId
-    ) {
-      const data = msg.data;
-      downloadToDisk(data.url, resolverSlot.folderName, data.filename)
-        .then(() => finishResolver(true))
-        .catch(() =>
-          finishResolver(false, new Error('Twitter download failed')),
-        );
-    } else if (
-      msg.msg === 'Error' &&
-      resolverSlot &&
-      resolverSlot.kind === 'twit' &&
-      tabId === resolverSlot.tabId
-    ) {
-      finishResolver(false, new Error('Could not resolve Twitter/X image'));
-    }
+  port.onDisconnect.addListener(() => {
+    const slot = resolversByTabId.get(tabId);
+    if (!slot) return;
+    // If the content script port disconnects unexpectedly, treat as a failure.
+    finishResolver(tabId, false, new Error('Resolver port disconnected'));
   });
 }
 
@@ -360,22 +359,28 @@ function downloadViaTab(kind, pageUrl, folderName) {
       }
       const tabId = tab.id;
       const timer = setTimeout(() => {
-        if (resolverSlot && resolverSlot.tabId === tabId) {
-          const slot = resolverSlot;
-          resolverSlot = null;
+        if (resolversByTabId.has(tabId)) {
+          resolversByTabId.delete(tabId);
           chrome.tabs.remove(tabId, () => {});
-          slot.reject(new Error('Resolver timed out'));
+          reject(new Error('Resolver timed out'));
         }
       }, 120000);
 
-      resolverSlot = {
+      // This overwrites any previous (shouldn't happen under sequential processing).
+      const existing = resolversByTabId.get(tabId);
+      if (existing) {
+        clearTimeout(existing.timer);
+        resolversByTabId.delete(tabId);
+      }
+
+      resolversByTabId.set(tabId, {
         kind,
         tabId,
         folderName,
         timer,
         resolve: () => resolve(),
         reject: (e) => reject(e),
-      };
+      });
     });
   });
 }

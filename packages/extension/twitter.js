@@ -15,7 +15,10 @@ const postSearch = setInterval(() => {
   if (!article) {
     if (Date.now() - postStarted > POST_TIMEOUT_MS) {
       clearInterval(postSearch);
-      port.postMessage({ msg: 'Error' });
+      port.postMessage({
+        msg: 'Error',
+        data: { error: 'Could not find tweet post (timeout waiting for article)' },
+      });
     }
     return;
   }
@@ -42,7 +45,13 @@ const postSearch = setInterval(() => {
 
   if (Date.now() - postStarted > POST_TIMEOUT_MS) {
     clearInterval(postSearch);
-    port.postMessage({ msg: 'Error' });
+    port.postMessage({
+      msg: 'Error',
+      data: {
+        error:
+          'Could not open tweet media (timeout waiting for photo link or view button)',
+      },
+    });
   }
 }, INTERVAL_MS);
 
@@ -74,7 +83,10 @@ function startImageSearch() {
       Date.now() - imgStarted > IMAGE_TIMEOUT_MS
     ) {
       if (imageSearch) clearInterval(imageSearch);
-      port.postMessage({ msg: 'Error' });
+      port.postMessage({
+        msg: 'Error',
+        data: { error: 'Could not find image in media dialog (timeout)' },
+      });
     }
   }, INTERVAL_MS);
 }

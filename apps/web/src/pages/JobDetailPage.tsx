@@ -167,7 +167,10 @@ export default function JobDetailPage() {
                       <ExternalUrl href={t.url}>{truncateUrl(t.url, 96)}</ExternalUrl>
                     </TableCell>
                     <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>
-                      {t.error || '—'}
+                      {t.error ||
+                        (t.status === 'failed'
+                          ? 'Failed (no error message)'
+                          : '—')}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
                       {t.claimedAt

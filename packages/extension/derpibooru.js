@@ -14,10 +14,12 @@ const search = setInterval(() => {
 
   if (downloadButton?.href) {
     clearInterval(search);
+    const url = downloadButton.href;
     port.postMessage({
       msg: 'DownloadThis',
       data: {
-        url: downloadButton.href,
+        url,
+        filename: urlToFilename(url),
         msg: 'Derpi download',
       },
     });
@@ -42,3 +44,8 @@ const search = setInterval(() => {
     }
   }
 }, INTERVAL_MS);
+
+function urlToFilename(url) {
+  const i = url.lastIndexOf('/');
+  return url.slice(i + 1).split('?')[0] || 'derpi.bin';
+}

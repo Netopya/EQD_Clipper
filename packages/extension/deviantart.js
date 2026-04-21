@@ -67,14 +67,14 @@ function waitForElement(selector, time = 3000, validation = () => true) {
     }
     firstImage.click();
   } catch(ex) {
-    port.postMessage({ msg: 'Error', data: 'Could not find preview image' });
+    port.postMessage({ msg: 'Error', data: { error: 'Could not find preview image' } });
     return;
   }
 
   setTimeout(() => {
     const image = document.querySelector('.ReactModalPortal img');
     if (!image?.src) {
-      port.postMessage({ msg: 'Error', data: 'Could not find modal image' });
+      port.postMessage({ msg: 'Error', data: { error: 'Could not find modal image' } });
       return;
     }
     image.style.outline = '5px solid purple';
