@@ -27,6 +27,9 @@ export default function JobDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [job, setJob] = useState<JobRow | null>(null);
   const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [requeueBusy, setRequeueBusy] = useState(false);
+  const [requeueTaskId, setRequeueTaskId] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(
     async (opts?: { quiet?: boolean }) => {
@@ -71,6 +74,66 @@ export default function JobDetailPage() {
     void load();
   }, [load]);
 
+  const requeueableCount = tasks.filter(
+    (t) => t.status === 'failed' || t.status === 'in_progress',
+  ).length;
+
+  const requeue = async () => {
+    if (!jobId || !getStoredToken()) return;
+    setMessage(null);
+    setError(null);
+    setRequeueBusy(true);
+    try {
+      const r = await apiFetch('/api/jobs/requeue', {
+        method: 'POST',
+        body: JSON.stringify({ jobId }),
+      });
+      const body = (await r.json().catch(() => ({}))) as {
+        error?: string;
+        reset?: number;
+      };
+      if (!r.ok) {
+        setError(body.error || `Re-queue failed: ${r.status}`);
+        return;
+      }
+      const n = typeof body.reset === 'number' ? body.reset : 0;
+      setMessage(
+        n > 0
+          ? `Re-queued ${n} task${n === 1 ? '' : 's'} (failed or in progress).`
+          : 'No failed or in-progress tasks to re-queue.',
+      );
+      await load({ quiet: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRequeueBusy(false);
+    }
+  };
+
+  const requeueOneTask = async (taskId: string) => {
+    if (!getStoredToken()) return;
+    setMessage(null);
+    setError(null);
+    setRequeueTaskId(taskId);
+    try {
+      const r = await apiFetch('/api/tasks/requeue', {
+        method: 'POST',
+        body: JSON.stringify({ taskId }),
+      });
+      const body = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) {
+        setError(body.error || `Re-queue task failed: ${r.status}`);
+        return;
+      }
+      setMessage('Task re-queued.');
+      await load({ quiet: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRequeueTaskId(null);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -92,6 +155,21 @@ export default function JobDetailPage() {
         </Typography>
         <Box sx={{ flex: 1 }} />
         <Button
+          variant="contained"
+          color="secondary"
+          disabled={
+            !jobId ||
+            loading ||
+            refreshing ||
+            requeueBusy ||
+            requeueTaskId !== null ||
+            requeueableCount === 0
+          }
+          onClick={() => void requeue()}
+        >
+          {requeueBusy ? 'Re-queueing…' : 'Re-queue failed / stuck'}
+        </Button>
+        <Button
           variant="outlined"
           disabled={!jobId || loading || refreshing}
           onClick={() => void load({ quiet: true })}
@@ -99,6 +177,12 @@ export default function JobDetailPage() {
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </Button>
       </Stack>
+
+      {message ? (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMessage(null)}>
+          {message}
+        </Alert>
+      ) : null}
 
       {error ? (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
@@ -150,6 +234,7 @@ export default function JobDetailPage() {
                   <TableCell>URL</TableCell>
                   <TableCell>Error</TableCell>
                   <TableCell>Claimed</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -176,6 +261,25 @@ export default function JobDetailPage() {
                       {t.claimedAt
                         ? new Date(t.claimedAt).toLocaleString()
                         : '—'}
+                    </TableCell>
+                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                      {t.status === 'failed' || t.status === 'in_progress' ? (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={
+                            loading ||
+                            refreshing ||
+                            requeueBusy ||
+                            requeueTaskId !== null
+                          }
+                          onClick={() => void requeueOneTask(t.id)}
+                        >
+                          {requeueTaskId === t.id ? '…' : 'Re-queue'}
+                        </Button>
+                      ) : (
+                        '—'
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

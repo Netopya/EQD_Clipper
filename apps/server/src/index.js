@@ -161,6 +161,75 @@ fastify.get('/api/jobs', async (req, reply) => {
   }));
 });
 
+/**
+ * Body-based path avoids 404s in some deployments where nested `/api/jobs/:id/requeue`
+ * did not match (e.g. static / catch-all ordering).
+ */
+fastify.post('/api/jobs/requeue', async (req, reply) => {
+  if (!requireToken(req, reply)) return;
+  const body = /** @type {{ jobId?: string }} */ (req.body ?? {});
+  const jobId = typeof body.jobId === 'string' ? body.jobId.trim() : '';
+  if (!jobId) {
+    reply.code(400).send({ error: 'jobId required' });
+    return;
+  }
+  const job = state.jobs.find((j) => j.id === jobId);
+  if (!job) {
+    reply.code(404).send({ error: 'Job not found' });
+    return;
+  }
+  let reset = 0;
+  for (const t of state.tasks) {
+    if (t.jobId !== job.id) continue;
+    if (t.status !== 'failed' && t.status !== 'in_progress') continue;
+    t.status = 'pending';
+    delete t.error;
+    delete t.claimedAt;
+    reset += 1;
+  }
+  if (reset > 0) {
+    job.status = 'running';
+    delete job.error;
+    delete job.errorCode;
+    job.updatedAt = new Date().toISOString();
+    persist();
+  }
+  return { reset, job };
+});
+
+fastify.post('/api/tasks/requeue', async (req, reply) => {
+  if (!requireToken(req, reply)) return;
+  const body = /** @type {{ taskId?: string }} */ (req.body ?? {});
+  const taskId = typeof body.taskId === 'string' ? body.taskId.trim() : '';
+  if (!taskId) {
+    reply.code(400).send({ error: 'taskId required' });
+    return;
+  }
+  const task = state.tasks.find((t) => t.id === taskId);
+  if (!task) {
+    reply.code(404).send({ error: 'Task not found' });
+    return;
+  }
+  if (task.status !== 'failed' && task.status !== 'in_progress') {
+    reply
+      .code(400)
+      .send({ error: 'Task is not failed or in progress' });
+    return;
+  }
+  task.status = 'pending';
+  delete task.error;
+  delete task.claimedAt;
+  const job = state.jobs.find((j) => j.id === task.jobId);
+  if (job) {
+    job.status = 'running';
+    delete job.error;
+    delete job.errorCode;
+    job.updatedAt = new Date().toISOString();
+  }
+  persist();
+  return { task, job };
+});
+
 fastify.get('/api/jobs/:id', async (req, reply) => {
   if (!requireToken(req, reply)) return;
   const job = state.jobs.find((j) => j.id === req.params.id);

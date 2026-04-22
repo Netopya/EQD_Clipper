@@ -7,7 +7,7 @@ const MODAL_WAIT_MS = 4000;
 const started = Date.now();
 
 function waitForElement(selector, time = 3000, validation = () => true) {
-  return Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const elementLocator = () => document.querySelector(selector);
 
     const search = setInterval(() => {
@@ -22,15 +22,19 @@ function waitForElement(selector, time = 3000, validation = () => true) {
     setTimeout(() => {
       clearInterval(search);
       reject();
-    }, timeout);
+    }, time);
   });
 }
 
+function sleep(ms = 1000) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 
 (async() => {
   try {
-    const downloadButton = waitForElement('[download]', DOWNLOAD_SEARCH_MS, (element) => { !!element.href });
+    await sleep(1000);
+    const downloadButton = await waitForElement('[download]', DOWNLOAD_SEARCH_MS, (element) => !!element.href);
     downloadButton.style.outline = '5px solid purple';
     port.postMessage({
       msg: 'DownloadThis',
@@ -45,11 +49,11 @@ function waitForElement(selector, time = 3000, validation = () => true) {
     });
     return;
   } catch(ex) {
-    openModalFallback();
+    console.log('Could not find download button', ex, document.querySelector('[download]'));
   }
 
   try {
-    const firstImage = waitForElement('img[fetchpriority="high"]');
+    const firstImage = await waitForElement('img[fetchpriority="high"]');
 
     if (firstImage.computedStyleMap().get('cursor').value !== 'zoom-in') {
       port.postMessage({
@@ -66,17 +70,17 @@ function waitForElement(selector, time = 3000, validation = () => true) {
       return;
     }
     firstImage.click();
+    await sleep(1000);
   } catch(ex) {
-    port.postMessage({ msg: 'Error', data: { error: 'Could not find preview image' } });
+    console.log('Could not find preview image', ex, document.querySelector('img[fetchpriority="high"]'));
+    //port.postMessage({ msg: 'Error', data: { error: 'Could not find preview image' } });
     return;
   }
 
-  setTimeout(() => {
-    const image = document.querySelector('.ReactModalPortal img');
-    if (!image?.src) {
-      port.postMessage({ msg: 'Error', data: { error: 'Could not find modal image' } });
-      return;
-    }
+  await sleep(MODAL_WAIT_MS);
+
+  try {
+  const image = await waitForElement('.ReactModalPortal img', MODAL_WAIT_MS, (element) => !!element.src);
     image.style.outline = '5px solid purple';
     port.postMessage({
       msg: 'DownloadThis',
@@ -89,8 +93,10 @@ function waitForElement(selector, time = 3000, validation = () => true) {
         msg: 'Preview Image',
       },
     });
-  }, MODAL_WAIT_MS);
-
+  } catch(ex) {
+    port.postMessage({ msg: 'Error', data: { error: 'Could not find modal image' } });
+    return;
+  }
 })();
 
 // const search = setInterval(() => {
