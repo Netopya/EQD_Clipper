@@ -3,7 +3,7 @@
   "name": "EQD Clipper",
   "version": "2.0.1",
   "description": "Download worker for the EQD Clipper companion app (DeviantArt, Derpibooru, X/Twitter).",
-  "permissions": ["alarms", "downloads", "storage", "tabs"],
+  "permissions": ["alarms", "downloads", "storage", "tabs", "windows"],
   "host_permissions": [
     "http://127.0.0.1/*",
     "http://localhost/*",

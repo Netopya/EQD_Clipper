@@ -8,6 +8,12 @@ const POLL_ALARM = 'eqd-clipper-poll';
 
 const LOG = '[EQD Clipper]';
 
+/**
+ * Only one drain loop at a time so overlapping alarms / Poll now / startup cannot open parallel resolver tabs.
+ * @type {Promise<void>}
+ */
+let drainChain = Promise.resolve();
+
 /** Runs as soon as the service worker script is parsed (before any async work). */
 console.info(LOG, 'background script evaluated', new Date().toISOString());
 
@@ -104,7 +110,16 @@ async function authFetch(path, options = {}) {
   return fetch(url, { ...options, headers });
 }
 
-async function drainQueue() {
+/**
+ * Wait for any in-flight drain, then run one drain pass. Safe to call from alarm, popup, or startup concurrently.
+ */
+function drainQueue() {
+  const next = drainChain.then(() => runDrainQueue());
+  drainChain = next.catch(() => {});
+  return next;
+}
+
+async function runDrainQueue() {
   console.info(LOG, 'drainQueue() start');
   const cfg = await getConfig();
   if (!cfg.pollingEnabled) {
@@ -185,25 +200,21 @@ async function runTask(task) {
   }
 }
 
-/** @type {{ id: number, settle: (ok: boolean) => void } | null} */
-let currentDownload = null;
+/** @type {Map<number, { settle: (ok: boolean) => void }>} */
+const downloadsById = new Map();
 
 chrome.downloads.onChanged.addListener((delta) => {
-  if (
-    currentDownload !== null &&
-    delta.id === currentDownload.id &&
-    delta.state?.current === 'complete'
-  ) {
-    chrome.downloads.erase({ id: currentDownload.id }, () => {});
-    currentDownload.settle(true);
-    currentDownload = null;
-  } else if (
-    currentDownload !== null &&
-    delta.id === currentDownload.id &&
-    delta.error
-  ) {
-    currentDownload.settle(false);
-    currentDownload = null;
+  const id = delta.id;
+  if (typeof id !== 'number') return;
+  const slot = downloadsById.get(id);
+  if (!slot) return;
+  if (delta.state?.current === 'complete') {
+    chrome.downloads.erase({ id }, () => {});
+    downloadsById.delete(id);
+    slot.settle(true);
+  } else if (delta.error) {
+    downloadsById.delete(id);
+    slot.settle(false);
   }
 });
 
@@ -235,13 +246,12 @@ function downloadToDisk(url, folderName, filename) {
           reject(new Error('downloadId missing'));
           return;
         }
-        currentDownload = {
-          id: downloadId,
+        downloadsById.set(downloadId, {
           settle: (ok) => {
             if (ok) resolve();
             else reject(new Error('Download failed'));
           },
-        };
+        });
       },
     );
   });
@@ -352,10 +362,13 @@ function registerResolverPort(port, tabId, def) {
  */
 function downloadViaTab(kind, pageUrl, folderName) {
   return new Promise((resolve, reject) => {
-    chrome.tabs.create({ url: pageUrl, active: kind !== 'derpi' }, (tab) => {
+    chrome.tabs.create({ url: pageUrl, active: true }, (tab) => {
       if (!tab?.id) {
         reject(new Error('Could not open tab'));
         return;
+      }
+      if (typeof tab.windowId === 'number') {
+        chrome.windows.update(tab.windowId, { focused: true }, () => {});
       }
       const tabId = tab.id;
       const timer = setTimeout(() => {

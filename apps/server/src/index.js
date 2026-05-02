@@ -84,20 +84,36 @@ function reclaimStaleTasks() {
 }
 
 /**
+ * Atomically moves the next eligible task to `in_progress` and returns it, or null.
  * @returns {import('./store.js').Task | null}
  */
-async function pickNextTask() {
+async function claimNextTask() {
   reclaimStaleTasks();
-  const pending = state.tasks.filter((t) => t.status === 'pending');
+  let pending = state.tasks.filter((t) => t.status === 'pending');
   if (!pending.length) return null;
 
   const twitterPending = pending.filter(isTwitterTask);
   const nonTwitter = pending.find((t) => !isTwitterTask(t));
-  if (nonTwitter) return nonTwitter;
+  if (nonTwitter) {
+    nonTwitter.status = 'in_progress';
+    nonTwitter.claimedAt = new Date().toISOString();
+    jobTouch(nonTwitter.jobId);
+    persist();
+    return nonTwitter;
+  }
 
   if (twitterPending.length) {
     await waitForTwitterSlot();
-    return twitterPending[0] ?? null;
+    reclaimStaleTasks();
+    pending = state.tasks.filter((t) => t.status === 'pending');
+    const twitterNow = pending.filter(isTwitterTask);
+    const head = twitterNow[0];
+    if (!head) return null;
+    head.status = 'in_progress';
+    head.claimedAt = new Date().toISOString();
+    jobTouch(head.jobId);
+    persist();
+    return head;
   }
   return null;
 }
@@ -307,14 +323,10 @@ fastify.post('/api/jobs', async (req, reply) => {
 
 fastify.post('/api/worker/poll', async (req, reply) => {
   if (!requireToken(req, reply)) return;
-  const task = await pickNextTask();
+  const task = await claimNextTask();
   if (!task) {
     return { task: null };
   }
-  task.status = 'in_progress';
-  task.claimedAt = new Date().toISOString();
-  jobTouch(task.jobId);
-  persist();
   return {
     task: {
       id: task.id,
