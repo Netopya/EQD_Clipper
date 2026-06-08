@@ -10,6 +10,15 @@ let viewClicked = false;
 let imageSearch = null;
 
 const postSearch = setInterval(() => {
+
+  // If the URL is of the format status/ID/photo/ID, then skip to image search
+  const url = new URL(window.location.href);
+  if (/\/status\/\d+\/photo\/\d+/.test(url.pathname)) {
+    clearInterval(postSearch);
+    startImageSearch();
+    return;
+  }
+
   const article = document.querySelector('article[role="article"]');
 
   if (!article) {
