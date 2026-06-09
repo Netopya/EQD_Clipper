@@ -1,0 +1,29 @@
+# Run the full dev stack (API + Vite) with Node inside Docker.
+# Chrome extension still loads from the host: packages/extension
+#
+# First time:
+#   docker compose run --rm dev npm install
+# Then:
+#   docker compose up dev
+#
+services:
+  dev:
+    image: node:24-slim
+    working_dir: /app
+    volumes:
+      - .:/app
+      # Linux deps inside the container; avoids mixing host OS node_modules with Debian.
+      - eqd_clipper_node_modules:/app/node_modules
+    ports:
+      - "8787:8787"
+      - "5173:5173"
+    environment:
+      # Host bind-mount on Windows/macOS: make file watchers reliable for Vite / node --watch
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    stdin_open: true
+    tty: true
+    command: npm run dev
+
+volumes:
+  eqd_clipper_node_modules:

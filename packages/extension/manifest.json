@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "EQD Clipper",
+  "version": "2.0.1",
+  "description": "Download worker for the EQD Clipper companion app (DeviantArt, Derpibooru, X/Twitter).",
+  "permissions": ["alarms", "downloads", "storage", "tabs", "windows"],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://*.deviantart.com/*",
+    "https://*.derpibooru.org/*",
+    "https://*.twitter.com/*",
+    "https://*.x.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "EQD Clipper"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.deviantart.com/*"],
+      "js": ["deviantart.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.derpibooru.org/*"],
+      "js": ["derpibooru.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.twitter.com/*", "https://*.x.com/*"],
+      "js": ["twitter.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
